@@ -19,6 +19,10 @@
 		{
 			"pattern": "httpbin.cf-testing.com",
 			"custom_domain": true
+		},
+		{
+			"pattern": "httpbin.cf-testing.com/*",
+			"zone_name": "cf-testing.com"
 		}
 	],
 	"workers_dev": false
