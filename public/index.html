@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+		<!-- Primary Meta Tags -->
+		<title>HttpBin on Workers - HTTP Request & Response Testing Service</title>
+		<meta name="title" content="HttpBin on Workers - HTTP Request & Response Testing Service" />
+		<meta
+			name="description"
+			content="Free HTTP request and response testing service built on Cloudflare Workers. Test REST APIs, inspect headers, cookies, authentication, redirects, and more with 40+ endpoints."
+		/>
+		<meta
+			name="keywords"
+			content="httpbin, http testing, api testing, rest api, http client, curl, postman alternative, request testing, response testing, cloudflare workers, api development, web debugging, http headers, authentication testing"
+		/>
+		<meta name="author" content="HttpBin on Workers" />
+		<meta name="robots" content="index, follow" />
+		<meta name="language" content="English" />
+		<meta name="revisit-after" content="30 days" />
+
+		<!-- Canonical URL -->
+		<link rel="canonical" href="https://httpbin.cf-testing.com/" />
+
+		<!-- Open Graph / Facebook -->
+		<meta property="og:type" content="website" />
+		<meta property="og:url" content="https://httpbin.cf-testing.com/" />
+		<meta property="og:title" content="HttpBin on Workers - HTTP Request & Response Testing Service" />
+		<meta
+			property="og:description"
+			content="Free HTTP request and response testing service built on Cloudflare Workers. Test REST APIs, inspect headers, cookies, authentication, redirects, and more with 40+ endpoints."
+		/>
+		<meta property="og:image" content="https://httpbin.cf-testing.com/thumbnail.png" />
+		<meta property="og:site_name" content="HttpBin on Workers" />
+		<meta property="og:locale" content="en_US" />
+
+		<!-- Twitter -->
+		<meta property="twitter:card" content="summary_large_image" />
+		<meta property="twitter:url" content="https://httpbin.cf-testing.com/" />
+		<meta property="twitter:title" content="HttpBin on Workers - HTTP Request & Response Testing Service" />
+		<meta
+			property="twitter:description"
+			content="Free HTTP request and response testing service built on Cloudflare Workers. Test REST APIs, inspect headers, cookies, authentication, and more."
+		/>
+		<meta property="twitter:image" content="https://httpbin.cf-testing.com/thumbnail.png" />
+
+		<!-- Favicon -->
+		<link rel="icon" href="favicon.ico" />
+
+		<!-- Theme Color -->
+		<meta name="theme-color" content="#00f2fe" />
+		<meta name="msapplication-TileColor" content="#00f2fe" />
+
+		<!-- Apple Touch Icon -->
+		<link rel="apple-touch-icon" href="favicon.ico" />
+
+		<!-- Schema.org JSON-LD -->
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "WebApplication",
+				"name": "HttpBin on Workers",
+				"description": "Free HTTP request and response testing service built on Cloudflare Workers. Test REST APIs, inspect headers, cookies, authentication, redirects, and more with 40+ endpoints.",
+				"url": "https://httpbin.cf-testing.com/",
+				"applicationCategory": "DeveloperApplication",
+				"operatingSystem": "Web",
+				"offers": {
+					"@type": "Offer",
+					"price": "0",
+					"priceCurrency": "USD"
+				},
+				"featureList": [
+					"HTTP Method Testing (GET, POST, PUT, DELETE, PATCH)",
+					"Authentication Testing (Basic, Bearer, Digest)",
+					"Status Code Testing",
+					"Request & Response Inspection",
+					"Cookie Management",
+					"Redirect Testing",
+					"Dynamic Data Generation",
+					"Image Response Testing",
+					"Cache & ETag Support",
+					"Stream & Range Requests",
+					"cURL Command Generator",
+					"Interactive API Tester"
+				],
+				"browserRequirements": "Requires JavaScript. Requires HTML5.",
+				"softwareVersion": "1.0",
+				"author": {
+					"@type": "Organization",
+					"name": "HttpBin on Workers"
+				}
+			}
+		</script>
+
+		<link rel="stylesheet" href="styles.css" />
+	</head>
+	<body>
+		<div class="container">
+			<header>
+				<h1>🌐 HttpBin</h1>
+				<p class="subtitle">HTTP Request & Response Testing Service</p>
+			</header>
+
+			<div class="card expanded" id="section-api-tester">
+				<div class="section-header" onclick="toggleSection('api-tester')">
+					<h2 class="section-title">🧪 API Tester</h2>
+					<span class="section-toggle">▼</span>
+				</div>
+				<div class="section-content" style="max-height: 3000px">
+					<div class="section-content-inner">
+						<div class="tester">
+							<div class="input-group">
+								<label for="method">Method</label>
+								<select id="method" onchange="updateCurl()">
+									<option value="GET">GET</option>
+									<option value="POST">POST</option>
+									<option value="PUT">PUT</option>
+									<option value="DELETE">DELETE</option>
+									<option value="PATCH">PATCH</option>
+									<option value="HEAD">HEAD</option>
+								</select>
+							</div>
+
+							<div class="input-group">
+								<label for="endpoint">Endpoint</label>
+								<input type="text" id="endpoint" placeholder="/get" value="/get" oninput="updateCurl()" />
+							</div>
+
+							<div class="input-group">
+								<label for="headers">Headers (JSON)</label>
+								<textarea id="headers" placeholder='{"Content-Type": "application/json"}' oninput="updateCurl()">{}</textarea>
+							</div>
+
+							<div class="input-group">
+								<label for="body">Body</label>
+								<textarea id="body" placeholder='{"key": "value"}' oninput="updateCurl()">{"test": "data"}</textarea>
+							</div>
+
+							<button class="btn" onclick="sendRequest()" id="sendBtn">Send Request</button>
+
+							<div class="curl-box" id="curlBox">
+								<div class="curl-header">
+									<span class="curl-title">cURL Command</span>
+									<button class="copy-btn" id="copyBtn" onclick="copyCurl()">Copy</button>
+								</div>
+								<div class="curl-content" id="curlContent"></div>
+							</div>
+
+							<div id="response"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="card" id="section-http-methods">
+				<div class="section-header" onclick="toggleSection('http-methods')">
+					<h2 class="section-title">HTTP Methods <span class="endpoint-count">6 endpoints</span></h2>
+					<span class="section-toggle">▼</span>
+				</div>
+				<div class="section-content">
+					<div class="section-content-inner">
+						<div class="endpoint-grid">
+							<div class="endpoint" onclick="testEndpoint('/get', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/get</div>
+								<div class="endpoint-desc">Returns GET request data</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/post', 'POST', JSON.stringify({test: 'data'}))">
+								<span class="endpoint-method method-post">POST</span>
+								<div class="endpoint-path">/post</div>
+								<div class="endpoint-desc">Returns POST request data</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/put', 'PUT', JSON.stringify({test: 'data'}))">
+								<span class="endpoint-method method-put">PUT</span>
+								<div class="endpoint-path">/put</div>
+								<div class="endpoint-desc">Returns PUT request data</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/delete', 'DELETE')">
+								<span class="endpoint-method method-delete">DELETE</span>
+								<div class="endpoint-path">/delete</div>
+								<div class="endpoint-desc">Returns DELETE request data</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/patch', 'PATCH', JSON.stringify({test: 'data'}))">
+								<span class="endpoint-method method-patch">PATCH</span>
+								<div class="endpoint-path">/patch</div>
+								<div class="endpoint-desc">Returns PATCH request data</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/anything', 'POST', JSON.stringify({test: 'data'}))">
+								<span class="endpoint-method method-any">ANY</span>
+								<div class="endpoint-path">/anything</div>
+								<div class="endpoint-desc">Accepts any HTTP method</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="card" id="section-auth">
+				<div class="section-header" onclick="toggleSection('auth')">
+					<h2 class="section-title">Authentication <span class="endpoint-count">4 endpoints</span></h2>
+					<span class="section-toggle">▼</span>
+				</div>
+				<div class="section-content">
+					<div class="section-content-inner">
+						<div class="endpoint-grid">
+							<div
+								class="endpoint"
+								onclick="testEndpoint('/basic-auth/user/pass', 'GET', null, {Authorization: 'Basic ' + btoa('user:pass')})"
+							>
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/basic-auth/:user/:pass</div>
+								<div class="endpoint-desc">Basic authentication</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/bearer', 'GET', null, {Authorization: 'Bearer mytoken123'})">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/bearer</div>
+								<div class="endpoint-desc">Bearer token auth</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/digest-auth/auth/user/pass', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/digest-auth/:qop/:user/:pass</div>
+								<div class="endpoint-desc">Digest authentication</div>
+							</div>
+							<div
+								class="endpoint"
+								onclick="testEndpoint('/hidden-basic-auth/user/pass', 'GET', null, {Authorization: 'Basic ' + btoa('user:pass')})"
+							>
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/hidden-basic-auth/:user/:pass</div>
+								<div class="endpoint-desc">Hidden Basic auth (404 on fail)</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="card" id="section-status">
+				<div class="section-header" onclick="toggleSection('status')">
+					<h2 class="section-title">Status Codes <span class="endpoint-count">1 endpoint</span></h2>
+					<span class="section-toggle">▼</span>
+				</div>
+				<div class="section-content">
+					<div class="section-content-inner">
+						<div class="endpoint-grid">
+							<div class="endpoint" onclick="testEndpoint('/status/200', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/status/200</div>
+								<div class="endpoint-desc">200 OK</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/status/404', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/status/404</div>
+								<div class="endpoint-desc">404 Not Found</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/status/418', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/status/418</div>
+								<div class="endpoint-desc">418 I'm a teapot</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/status/500', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/status/500</div>
+								<div class="endpoint-desc">500 Server Error</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="card" id="section-request">
+				<div class="section-header" onclick="toggleSection('request')">
+					<h2 class="section-title">Request Inspection <span class="endpoint-count">3 endpoints</span></h2>
+					<span class="section-toggle">▼</span>
+				</div>
+				<div class="section-content">
+					<div class="section-content-inner">
+						<div class="endpoint-grid">
+							<div class="endpoint" onclick="testEndpoint('/headers', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/headers</div>
+								<div class="endpoint-desc">Returns request headers</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/ip', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/ip</div>
+								<div class="endpoint-desc">Returns origin IP</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/user-agent', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/user-agent</div>
+								<div class="endpoint-desc">Returns user agent</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="card" id="section-response">
+				<div class="section-header" onclick="toggleSection('response')">
+					<h2 class="section-title">Response Formats <span class="endpoint-count">5 endpoints</span></h2>
+					<span class="section-toggle">▼</span>
+				</div>
+				<div class="section-content">
+					<div class="section-content-inner">
+						<div class="endpoint-grid">
+							<div class="endpoint" onclick="testEndpoint('/json', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/json</div>
+								<div class="endpoint-desc">Sample JSON data</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/html', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/html</div>
+								<div class="endpoint-desc">HTML document</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/xml', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/xml</div>
+								<div class="endpoint-desc">XML data</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/robots.txt', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/robots.txt</div>
+								<div class="endpoint-desc">robots.txt file</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/encoding/utf8', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/encoding/utf8</div>
+								<div class="endpoint-desc">UTF-8 characters</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="card" id="section-dynamic">
+				<div class="section-header" onclick="toggleSection('dynamic')">
+					<h2 class="section-title">Dynamic Data <span class="endpoint-count">8 endpoints</span></h2>
+					<span class="section-toggle">▼</span>
+				</div>
+				<div class="section-content">
+					<div class="section-content-inner">
+						<div class="endpoint-grid">
+							<div class="endpoint" onclick="testEndpoint('/uuid', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/uuid</div>
+								<div class="endpoint-desc">Generate UUID v4</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/base64/encode?text=hello', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/base64/encode</div>
+								<div class="endpoint-desc">Encode to base64</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/base64/decode?data=aGVsbG8=', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/base64/decode</div>
+								<div class="endpoint-desc">Decode base64</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/delay/2', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/delay/:n</div>
+								<div class="endpoint-desc">Delayed response</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/bytes/100', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/bytes/:n</div>
+								<div class="endpoint-desc">Random bytes</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/stream/5', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/stream/:n</div>
+								<div class="endpoint-desc">Stream JSON lines</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/range/1024', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/range/:n</div>
+								<div class="endpoint-desc">Range support</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/drip?duration=2&numbytes=50', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/drip</div>
+								<div class="endpoint-desc">Drip data over time</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="card" id="section-cookies">
+				<div class="section-header" onclick="toggleSection('cookies')">
+					<h2 class="section-title">Cookies <span class="endpoint-count">3 endpoints</span></h2>
+					<span class="section-toggle">▼</span>
+				</div>
+				<div class="section-content">
+					<div class="section-content-inner">
+						<div class="endpoint-grid">
+							<div class="endpoint" onclick="testEndpoint('/cookies', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/cookies</div>
+								<div class="endpoint-desc">Returns all cookies</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/cookies/set?session=abc123', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/cookies/set</div>
+								<div class="endpoint-desc">Set cookies</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/cookies/delete?session', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/cookies/delete</div>
+								<div class="endpoint-desc">Delete cookies</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="card" id="section-redirects">
+				<div class="section-header" onclick="toggleSection('redirects')">
+					<h2 class="section-title">Redirects <span class="endpoint-count">4 endpoints</span></h2>
+					<span class="section-toggle">▼</span>
+				</div>
+				<div class="section-content">
+					<div class="section-content-inner">
+						<div class="endpoint-grid">
+							<div class="endpoint" onclick="testEndpoint('/redirect/3', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/redirect/:n</div>
+								<div class="endpoint-desc">302 redirect n times</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/absolute-redirect/1', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/absolute-redirect/:n</div>
+								<div class="endpoint-desc">Absolute redirect</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/relative-redirect/1', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/relative-redirect/:n</div>
+								<div class="endpoint-desc">Relative redirect</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/redirect-to?url=/get&status_code=302', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/redirect-to</div>
+								<div class="endpoint-desc">Redirect to URL</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="card" id="section-images">
+				<div class="section-header" onclick="toggleSection('images')">
+					<h2 class="section-title">Images <span class="endpoint-count">4 endpoints</span></h2>
+					<span class="section-toggle">▼</span>
+				</div>
+				<div class="section-content">
+					<div class="section-content-inner">
+						<div class="endpoint-grid">
+							<div class="endpoint" onclick="window.open('/thumbnail.png', '_blank')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/thumbnail.png</div>
+								<div class="endpoint-desc">PNG image</div>
+							</div>
+							<div class="endpoint" onclick="window.open('/image/jpeg', '_blank')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/image/jpeg</div>
+								<div class="endpoint-desc">JPEG image</div>
+							</div>
+							<div class="endpoint" onclick="window.open('/image/svg', '_blank')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/image/svg</div>
+								<div class="endpoint-desc">SVG image</div>
+							</div>
+							<div class="endpoint" onclick="window.open('/image/webp', '_blank')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/image/webp</div>
+								<div class="endpoint-desc">WebP image</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="card" id="section-other">
+				<div class="section-header" onclick="toggleSection('other')">
+					<h2 class="section-title">Cache & Misc <span class="endpoint-count">4 endpoints</span></h2>
+					<span class="section-toggle">▼</span>
+				</div>
+				<div class="section-content">
+					<div class="section-content-inner">
+						<div class="endpoint-grid">
+							<div class="endpoint" onclick="testEndpoint('/cache', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/cache</div>
+								<div class="endpoint-desc">Returns 304 if cached</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/etag/test-etag', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/etag/:etag</div>
+								<div class="endpoint-desc">ETag support</div>
+							</div>
+							<div class="endpoint" onclick="testEndpoint('/response-headers?X-Custom=value', 'GET')">
+								<span class="endpoint-method method-get">GET</span>
+								<div class="endpoint-path">/response-headers</div>
+								<div class="endpoint-desc">Custom headers</div>
+							</div>
+							<div class="endpoint" onclick="window.open('/forms/post', '_blank')">
+								<span class="endpoint-method method-any">ANY</span>
+								<div class="endpoint-path">/forms/post</div>
+								<div class="endpoint-desc">HTML form</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<footer class="footer">
+				<div class="footer-content">
+					<p class="footer-main">
+						Built with Cloudflare Workers • Inspired by <a href="https://httpbin.org" target="_blank" rel="noopener">httpbin.org</a>
+					</p>
+
+					<div class="footer-disclaimer">
+						<h3 class="disclaimer-title">⚠️ Disclaimer</h3>
+						<p class="disclaimer-text">
+							This service is provided "as is" without warranty of any kind. Use at your own risk. Do not send sensitive data (passwords,
+							API keys, personal information) through this service. All requests and responses may be logged for debugging purposes. This
+							service is intended for testing and development only. Not affiliated with the original httpbin.org project.
+						</p>
+					</div>
+				</div>
+			</footer>
+		</div>
+
+		<script>
+			function toggleSection(sectionId) {
+				const card = document.getElementById('section-' + sectionId);
+				card.classList.toggle('expanded');
+			}
+
+			function testEndpoint(path, method, body, headers) {
+				method = method || 'GET';
+				body = body || null;
+				headers = headers || {};
+
+				document.getElementById('endpoint').value = path;
+				document.getElementById('method').value = method;
+				document.getElementById('body').value = body || '{"test": "data"}';
+				document.getElementById('headers').value = JSON.stringify(headers, null, 2);
+
+				updateCurl();
+				sendRequest();
+
+				const testerSection = document.getElementById('section-api-tester');
+				if (!testerSection.classList.contains('expanded')) {
+					testerSection.classList.add('expanded');
+				}
+
+				setTimeout(() => {
+					document.querySelector('#section-api-tester .tester').scrollIntoView({ behavior: 'smooth', block: 'center' });
+				}, 100);
+			}
+
+			function generateCurl() {
+				const method = document.getElementById('method').value;
+				const endpoint = document.getElementById('endpoint').value;
+				const headersText = document.getElementById('headers').value;
+				const bodyText = document.getElementById('body').value;
+
+				const baseUrl = window.location.origin;
+				const url = endpoint.startsWith('http') ? endpoint : baseUrl + endpoint;
+
+				let curl = `curl -X ${method} '${url}'`;
+
+				try {
+					if (headersText.trim() && headersText !== '{}') {
+						const headers = JSON.parse(headersText);
+						for (const [key, value] of Object.entries(headers)) {
+							curl += ` \\\n  -H '${key}: ${value}'`;
+						}
+					}
+				} catch (e) {
+					// Invalid JSON, skip headers
+				}
+
+				if (['POST', 'PUT', 'PATCH'].includes(method) && bodyText.trim()) {
+					const escapedBody = bodyText.replace(/'/g, "'\\''");
+					curl += ` \\\n  -d '${escapedBody}'`;
+				}
+
+				return curl;
+			}
+
+			function updateCurl() {
+				const curlContent = document.getElementById('curlContent');
+				curlContent.textContent = generateCurl();
+			}
+
+			async function copyCurl() {
+				const curlText = document.getElementById('curlContent').textContent;
+				const copyBtn = document.getElementById('copyBtn');
+
+				try {
+					await navigator.clipboard.writeText(curlText);
+					copyBtn.textContent = 'Copied!';
+					copyBtn.classList.add('copied');
+
+					setTimeout(() => {
+						copyBtn.textContent = 'Copy';
+						copyBtn.classList.remove('copied');
+					}, 2000);
+				} catch (err) {
+					console.error('Failed to copy:', err);
+				}
+			}
+
+			async function sendRequest() {
+				const method = document.getElementById('method').value;
+				const endpoint = document.getElementById('endpoint').value;
+				const headersText = document.getElementById('headers').value;
+				const bodyText = document.getElementById('body').value;
+				const responseDiv = document.getElementById('response');
+				const sendBtn = document.getElementById('sendBtn');
+
+				responseDiv.innerHTML = '<div class="response"><div class="response-status">Loading...</div></div>';
+				sendBtn.disabled = true;
+				sendBtn.textContent = 'Sending...';
+
+				try {
+					let headers = {};
+					if (headersText.trim()) {
+						try {
+							headers = JSON.parse(headersText);
+						} catch (e) {
+							throw new Error('Invalid JSON in headers field');
+						}
+					}
+
+					const options = {
+						method: method,
+						headers: headers,
+					};
+
+					if (['POST', 'PUT', 'PATCH'].includes(method) && bodyText.trim()) {
+						options.body = bodyText;
+						if (!headers['Content-Type']) {
+							headers['Content-Type'] = 'application/json';
+						}
+					}
+
+					const startTime = performance.now();
+					const response = await fetch(endpoint, options);
+					const endTime = performance.now();
+					const duration = (endTime - startTime).toFixed(2);
+
+					const contentType = response.headers.get('Content-Type') || '';
+					let responseText;
+
+					if (contentType.includes('application/json')) {
+						try {
+							const json = await response.json();
+							responseText = JSON.stringify(json, null, 2);
+						} catch (e) {
+							responseText = await response.text();
+						}
+					} else {
+						responseText = await response.text();
+					}
+
+					const responseHeaders = {};
+					response.headers.forEach((value, key) => {
+						responseHeaders[key] = value;
+					});
+
+					const statusClass = response.ok ? 'response-status' : 'response-error';
+					const output =
+						`<div class="${statusClass}">Status: ${response.status} ${response.statusText}</div>` +
+						`<div class="response-status">Duration: ${duration}ms</div>` +
+						`<div class="response-status">Headers:</div>` +
+						`<div class="response-body">${JSON.stringify(responseHeaders, null, 2)}</div>\n\n` +
+						`<div class="response-status">Body:</div>` +
+						`<div class="response-body">${responseText}</div>`;
+
+					responseDiv.innerHTML = `<div class="response">${output}</div>`;
+				} catch (error) {
+					responseDiv.innerHTML = `<div class="response"><div class="response-error">Error: ${error.message}</div></div>`;
+				} finally {
+					sendBtn.disabled = false;
+					sendBtn.textContent = 'Send Request';
+				}
+			}
+
+			window.addEventListener('load', () => {
+				document.getElementById('headers').value = '{}';
+				updateCurl();
+			});
+		</script>
+	</body>
+</html>
