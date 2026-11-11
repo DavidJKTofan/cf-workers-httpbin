@@ -2,6 +2,8 @@
 
 A comprehensive HTTP Request & Response testing service built on Cloudflare Workers with TypeScript and Workers Static Assets.
 
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cf-vnkr/cf-workers-httpbin)
+
 ## Features
 
 ### ✅ Implemented Endpoints
