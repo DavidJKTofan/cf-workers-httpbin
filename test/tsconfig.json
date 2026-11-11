@@ -1,0 +1,11 @@
+{
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		// Adds the `cloudflare:test` module on top of the Worker's own types.
+		"types": ["../worker-configuration.d.ts", "node", "@cloudflare/vitest-plugin/types"],
+		// The UI is plain JavaScript; its pure helpers are imported by test/ui.test.ts.
+		"allowJs": true,
+		"checkJs": false
+	},
+	"include": ["./**/*.ts", "../worker-configuration.d.ts", "../src/**/*.ts"]
+}

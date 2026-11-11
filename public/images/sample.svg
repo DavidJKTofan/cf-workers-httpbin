@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 320 240" shape-rendering="crispEdges">
+	<title>Colour-bar test card</title>
+	<rect x="0" y="0" width="40" height="160" fill="#ffffff"/>
+	<rect x="40" y="0" width="40" height="160" fill="#ffdd00"/>
+	<rect x="80" y="0" width="40" height="160" fill="#00c8dc"/>
+	<rect x="120" y="0" width="40" height="160" fill="#00aa50"/>
+	<rect x="160" y="0" width="40" height="160" fill="#c800aa"/>
+	<rect x="200" y="0" width="40" height="160" fill="#dc2828"/>
+	<rect x="240" y="0" width="40" height="160" fill="#1e3cc8"/>
+	<rect x="280" y="0" width="40" height="160" fill="#141414"/>
+	<rect x="0" y="160" width="20" height="80" fill="#000000"/>
+	<rect x="20" y="160" width="20" height="80" fill="#111111"/>
+	<rect x="40" y="160" width="20" height="80" fill="#222222"/>
+	<rect x="60" y="160" width="20" height="80" fill="#333333"/>
+	<rect x="80" y="160" width="20" height="80" fill="#444444"/>
+	<rect x="100" y="160" width="20" height="80" fill="#555555"/>
+	<rect x="120" y="160" width="20" height="80" fill="#666666"/>
+	<rect x="140" y="160" width="20" height="80" fill="#777777"/>
+	<rect x="160" y="160" width="20" height="80" fill="#888888"/>
+	<rect x="180" y="160" width="20" height="80" fill="#999999"/>
+	<rect x="200" y="160" width="20" height="80" fill="#aaaaaa"/>
+	<rect x="220" y="160" width="20" height="80" fill="#bbbbbb"/>
+	<rect x="240" y="160" width="20" height="80" fill="#cccccc"/>
+	<rect x="260" y="160" width="20" height="80" fill="#dddddd"/>
+	<rect x="280" y="160" width="20" height="80" fill="#eeeeee"/>
+	<rect x="300" y="160" width="20" height="80" fill="#ffffff"/>
+</svg>
