@@ -7,6 +7,18 @@
 /** Added request headers that do not start with `cf-`. */
 const ADDED_HEADERS = new Set(['cdn-loop', 'true-client-ip', 'x-forwarded-for', 'x-forwarded-proto', 'x-real-ip']);
 
+/**
+ * Bot Management signals that the "Add bot protection headers" Managed Transform can add
+ * to requests. They are never echoed, whatever `show_env` says: publishing a bot score or
+ * TLS fingerprint tells a client exactly how the zone's bot detection sees it.
+ * https://developers.cloudflare.com/rules/transform/managed-transforms/reference/
+ */
+const NEVER_ECHOED = new Set(['cf-bot-score', 'cf-ja3-hash', 'cf-ja4', 'cf-threat-score', 'cf-verified-bot']);
+
+export function isNeverEchoed(name: string): boolean {
+	return NEVER_ECHOED.has(name.toLowerCase());
+}
+
 /** Covers __cf_bm, __cflb, __cfruid, _cfuvid, cf_clearance, cf_chl_*, CF_Authorization and similar. */
 const COOKIE_PREFIX = /^(?:__cf|_cf|cf_)/i;
 

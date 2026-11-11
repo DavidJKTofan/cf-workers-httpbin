@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 import type { RouteContext } from '../types';
-import { isCloudflareHeader, showEnv } from './cloudflare';
+import { isCloudflareHeader, isNeverEchoed, showEnv } from './cloudflare';
 import { HttpError } from './http';
 import { LIMITS } from './limits';
 import { multiValue } from './params';
@@ -30,9 +30,10 @@ export function clientIp(request: Request): string {
 
 /** The request headers to echo: everything, or only what the client sent with `?show_env=0`. */
 export function requestHeaders({ request, url }: Pick<RouteContext, 'request' | 'url'>): Record<string, string> {
-	const all = Object.fromEntries(request.headers);
-	if (showEnv(url)) return all;
-	return Object.fromEntries(Object.entries(all).filter(([name]) => !isCloudflareHeader(name)));
+	const hideCloudflare = !showEnv(url);
+	return Object.fromEntries(
+		[...request.headers].filter(([name]) => !isNeverEchoed(name) && !(hideCloudflare && isCloudflareHeader(name))),
+	);
 }
 
 /**

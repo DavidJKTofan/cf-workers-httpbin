@@ -46,7 +46,7 @@ Cloudflare's products change quickly. Check the current documentation before rel
 ## Running behind Cloudflare
 
 - **`/cdn-cgi/` belongs to Cloudflare.** On a deployed Worker, Cloudflare answers every `/cdn-cgi/*` request itself, so `src/routes/cloudflare.ts` only runs locally and in tests. Do not build features that depend on the Worker seeing those paths.
-- **Cloudflare adds request headers and cookies.** `src/lib/cloudflare.ts` defines which ones. They are echoed by default and removed when the client passes `?show_env=0`. Route every echo of request headers through `requestHeaders()` so the switch works everywhere.
+- **Cloudflare adds request headers and cookies.** `src/lib/cloudflare.ts` defines which ones. They are echoed by default and removed when the client passes `?show_env=0`. Bot Management signals (`cf-bot-score` and the others in `NEVER_ECHOED`) are never echoed. Route every echo of request headers through `requestHeaders()` so the switch works everywhere.
 - **URLs arrive normalized** (repeated slashes merged, possibly more depending on zone settings). Do not write logic or tests that depend on receiving a non-normalized path.
 - **The UI's Content Security Policy is strict** (`public/_headers`): same-origin scripts and styles only. No inline `<script>`, `<style>`, `style=""` or `on*=""` attributes, and no third-party assets. `test/assets.test.ts` enforces this. `_headers` applies to static assets only; Worker responses set their headers in `src/lib/cors.ts`.
 
@@ -81,5 +81,5 @@ Tests run in `workerd` through `@cloudflare/vitest-plugin`, with the real `wrang
 
 - Write plain, descriptive commit messages and pull request descriptions about the change itself. Do not add tool, assistant or co-author attribution lines.
 - This repository is public. Never commit account IDs, zone IDs, API tokens, email addresses, real client IP addresses, or the hostnames of private deployments. Use `example.com` and the documentation ranges (`203.0.113.0/24`, `2001:db8::/32`) in examples and tests.
-- `wrangler.jsonc` stays deployable by anyone: no account-specific routes or IDs. Deployment-specific settings belong in the dashboard or in local, uncommitted configuration.
+- `wrangler.jsonc` carries no account-specific routes or IDs: custom domains are attached in the dashboard. It keeps `workers_dev` and `preview_urls` set to `false` on purpose, so the Worker is reachable only through custom domains.
 - Keep the disclaimer in `README.md` and the short version in the page footer intact.
