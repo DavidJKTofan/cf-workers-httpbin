@@ -251,7 +251,7 @@ Errors are JSON too, for example `{ "error": "Request body too large", "status":
 
 Every request passes through Cloudflare before it reaches the Worker. That changes a few things an HTTP testing service would otherwise show you verbatim.
 
-- **Request headers.** `/headers` and the `headers` field of every echo include what Cloudflare adds, such as `CF-Connecting-IP`, `CF-IPCountry`, `CF-Ray`, `CF-Visitor`, `CDN-Loop`, `X-Forwarded-For` and `X-Forwarded-Proto`. Cloudflare also sets `Accept-Encoding` to `br, gzip` whatever the client sent. Unlike httpbin.org, which hides proxy headers until you add `?show_env=1`, this service shows them by default. Add `?show_env=0` to any echo endpoint to see only what the client sent. See [Cloudflare HTTP headers](https://developers.cloudflare.com/fundamentals/reference/http-headers/).
+- **Request headers.** `/headers` and the `headers` field of every echo include what Cloudflare adds, such as `CF-Connecting-IP`, `CF-IPCountry`, `CF-Ray`, `CF-Visitor`, `CDN-Loop`, `X-Forwarded-For` and `X-Forwarded-Proto`. Cloudflare also sets `Accept-Encoding` to `br, gzip` whatever the client sent. Unlike httpbin.org, which hides proxy headers until you add `?show_env=1`, this service shows them by default. Add `?show_env=0` to any echo endpoint to see only what the client sent. The bot signals that the [Add bot protection headers](https://developers.cloudflare.com/rules/transform/managed-transforms/reference/) Managed Transform can add (`cf-bot-score`, `cf-verified-bot`, `cf-ja3-hash`, `cf-ja4`, and `cf-threat-score`) are never echoed. See [Cloudflare HTTP headers](https://developers.cloudflare.com/fundamentals/reference/http-headers/).
 - **Response headers.** Cloudflare adds `CF-Ray` and removes a few headers before the client sees them, including `Alt-Svc`, `Cache-Tag` and the `X-Accel-*` family, so setting those through `/response-headers` has no visible effect.
 - **Cookies.** Cloudflare features enabled on the zone can set their own cookies, for example `__cf_bm` or `cf_clearance`. A client with a cookie jar sends them back, so they appear in `/cookies` unless you add `?show_env=0`. See [Cloudflare cookies](https://developers.cloudflare.com/fundamentals/reference/policies-compliances/cloudflare-cookies/).
 - **URLs.** Cloudflare normalizes URLs before the Worker sees them. Repeated slashes are always merged; depending on zone settings, dot segments and percent-encoding are normalized too. `/anything` can therefore echo a slightly different path from the one you sent. See [URL normalization](https://developers.cloudflare.com/rules/normalization/).
@@ -279,13 +279,13 @@ npx wrangler login
 npm run deploy
 ```
 
-With no routes configured, the Worker is served from its `workers.dev` subdomain. To use your own hostname, add a custom domain on a zone in the same account, either in the dashboard or in `wrangler.jsonc`:
+`wrangler.jsonc` turns the `workers.dev` URL and Preview URLs off, so a fresh deployment has no public URL until you give it one. Add a custom domain on a zone in the same account, either in the dashboard or in `wrangler.jsonc`:
 
 ```jsonc
 "routes": [{ "pattern": "httpbin.example.com", "custom_domain": true }]
 ```
 
-Defining routes turns the `workers.dev` URL off unless `workers_dev` is set to `true`. Without routes in the file, Wrangler leaves domains you added in the dashboard alone and keeps `workers.dev` on.
+To use the `workers.dev` URL instead, set `"workers_dev": true`. Without routes in the file, Wrangler leaves domains you added in the dashboard alone.
 
 ## Project structure
 

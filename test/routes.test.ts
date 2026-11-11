@@ -141,6 +141,15 @@ describe('Cloudflare additions', () => {
 		}
 	});
 
+	it('never echoes bot protection headers, even with show_env on', async () => {
+		const bot = { 'CF-Bot-Score': '30', 'CF-JA3-Hash': 'abc', 'CF-JA4': 'def', 'CF-Threat-Score': '0', 'CF-Verified-Bot': 'false' };
+		for (const path of ['/headers', '/get?show_env=1', '/anything', '/stream/1', '/gzip']) {
+			const text = (await raw(await call(path, { headers: { ...headers, ...bot } }))).toLowerCase();
+			expect(text, path).toContain('cf-ray');
+			for (const name of Object.keys(bot)) expect(text, path).not.toContain(name.toLowerCase());
+		}
+	});
+
 	it('still reports the caller IP when the headers are hidden', async () => {
 		expect((await body(await call('/get?show_env=0', { headers }))).origin).toBe('203.0.113.7');
 	});

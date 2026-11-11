@@ -26,11 +26,12 @@
 			"enabled": true,
 			"head_sampling_rate": 0.1
 		}
-	}
-	// With no routes, the Worker is served from its workers.dev subdomain.
+	},
+	// The Worker is reachable only through custom domains: its workers.dev URL and
+	// Preview URLs are off. Add a custom domain on a zone in the same account, in the
+	// dashboard or here, or set "workers_dev" to true to use the workers.dev URL.
 	//
-	// To use your own hostname, add a custom domain on a zone in the same account.
-	// Defining routes turns the workers.dev URL off unless "workers_dev" is true.
-	//
-	// "routes": [{ "pattern": "httpbin.example.com", "custom_domain": true }]
+	// "routes": [{ "pattern": "httpbin.example.com", "custom_domain": true }],
+	"workers_dev": false,
+	"preview_urls": false
 }
