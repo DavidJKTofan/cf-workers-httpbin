@@ -6,13 +6,31 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "cf-workers-httpbin",
 	"main": "src/index.ts",
-	"compatibility_date": "2025-10-24",
-	"compatibility_flags": ["global_fetch_strictly_public"],
+	"compatibility_date": "2026-11-10",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	// Stack traces in logs point at the TypeScript source instead of the bundle.
+	"upload_source_maps": true,
 	"assets": {
-		// The path to the directory containing the `index.html` file to be served at `/`
-		"directory": "./public"
+		// Files here are served directly, without invoking the Worker. Any other
+		// path falls through to src/index.ts.
+		"directory": "./public",
+		// Lets the Worker read assets itself (used by the /image endpoints).
+		"binding": "ASSETS"
 	},
 	"observability": {
-		"enabled": true
+		"enabled": true,
+		"logs": {
+			"head_sampling_rate": 1
+		},
+		"traces": {
+			"enabled": true,
+			"head_sampling_rate": 0.1
+		}
 	}
+	// With no routes, the Worker is served from its workers.dev subdomain.
+	//
+	// To use your own hostname, add a custom domain on a zone in the same account.
+	// Defining routes turns the workers.dev URL off unless "workers_dev" is true.
+	//
+	// "routes": [{ "pattern": "httpbin.example.com", "custom_domain": true }]
 }
