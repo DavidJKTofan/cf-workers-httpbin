@@ -12,6 +12,8 @@
 			"models": {
 				"workers-ai/@cf/openai/gpt-oss-120b": {
 					"name": "gpt-oss-120b (Workers AI)",
+					"reasoning": true,
+					"tool_call": true,
 					"limit": { "context": 128000, "output": 16384 }
 				}
 			}
