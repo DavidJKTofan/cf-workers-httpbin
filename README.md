@@ -294,7 +294,9 @@ To use the `workers.dev` URL instead, set `"workers_dev": true`. Without routes 
 
 ## Continuous integration
 
-GitHub Actions workflows in [`.github/workflows/`](.github/workflows) check every push to `main` and every pull request. They run on standard GitHub-hosted runners, which are free for public repositories, and need no secrets or Cloudflare account, so pull requests from forks get the same checks. None of them deploys.
+GitHub Actions workflows in [`.github/workflows/`](.github/workflows) check every push to `main` and every pull request. They run on standard GitHub-hosted runners, which are free for public repositories, and need no secrets or Cloudflare account. A pull request from someone without write access gets the same checks once a maintainer approves the run: GitHub holds those runs until then. None of the workflows deploys.
+
+Only people with write access to the repository, the owner and collaborators, can start a workflow by hand or re-run one. Nobody else can start the security audit.
 
 | Workflow | When | What it checks |
 | --- | --- | --- |
@@ -322,6 +324,7 @@ This is the one workflow that costs money. GitHub runs it for free, but its mode
   ```
 
 - **Never** on pushes or pull requests. Started on any branch other than `main`, the job is skipped.
+- **Only by the owner and collaborators.** Starting a workflow by hand needs write access, which GitHub checks. The audit's secrets are in an environment limited to `main`, so neither a fork nor another branch receives them.
 
 Each run checks its configuration first. Without `CLOUDFLARE_API_TOKEN`, the job is skipped. With the token but another setting missing, an unusable certificate, or a gateway that rejects a first small request, it fails in its first steps, before the audit starts.
 
@@ -348,7 +351,7 @@ gh run watch "$(gh run list --workflow security-audit.yml --limit 1 --json datab
 
 A run takes up to two hours. Its log shows only the configuration checks, the certificate fingerprint and OpenCode's exit status. The findings are in the encrypted artifact: see [Read the report](#read-the-report).
 
-Models are named as AI Gateway names them: `workers-ai/@cf/openai/gpt-oss-120b`, `anthropic/claude-opus-5-5` or `openai/gpt-5.5`. If OpenCode's built-in catalogue does not know a model, add it with its context and output limits under `provider.cloudflare-ai-gateway.models` in [`.github/security-audit/opencode.json`](.github/security-audit/opencode.json), as gpt-oss-120b is. gpt-oss-120b is much smaller than frontier models and has a 128,000-token context window, so expect a shallower audit, and try the `quick` profile first.
+Models are named as AI Gateway names them: `workers-ai/@cf/openai/gpt-oss-120b`, `anthropic/claude-opus-5-5` or `openai/gpt-5.5`. If OpenCode's built-in catalogue does not know a model, add it with its context and output limits under `provider.cloudflare-ai-gateway.models` in [`.github/security-audit/opencode.json`](.github/security-audit/opencode.json), as gpt-oss-120b is. Mark a model that supports reasoning effort with `"reasoning": true`: without it OpenCode offers no `reasoning` levels for it. gpt-oss-120b is much smaller than frontier models and has a 128,000-token context window, so expect a shallower audit, and try the `quick` profile first.
 
 #### Set it up
 
@@ -428,6 +431,7 @@ Start with `.security-audit/report/REPORT.md`. The agent's event log is in `.sec
 - On the same page, turn on **Dependabot alerts** and **Dependabot security updates**. Alerts list known vulnerabilities in the dependencies. Security updates open pull requests that fix them, without waiting for the weekly schedule.
 - Also turn on **Private vulnerability reporting**, so that anyone can report a vulnerability privately. Reports arrive as draft security advisories, where confirmed audit findings go too.
 - Under **Settings > Actions > General**, keep the workflow permissions at **Read repository contents and packages permissions**, and keep GitHub Actions from creating or approving pull requests. Each workflow asks for anything more itself.
+- On the same page, set approval for fork pull request workflows to **Require approval for all external contributors**. CI and Security then run on a pull request from someone without write access only after you approve it, under the pull request's **Checks** tab.
 - Under **Settings > Rules > Rulesets**, a ruleset for `main` requires a pull request, the eleven CI and Security jobs, and no new CodeQL or zizmor alert of high severity or above. It also blocks force pushes and deleting `main`. Where Workers Builds deploys `main`, a failing check therefore also blocks a deploy. When a job is renamed or added, update the ruleset's required checks to match, after the job has run once.
 
 ## Project structure
