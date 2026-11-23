@@ -129,7 +129,9 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           GATEWAY_ID: ${{ vars.SECURITY_AUDIT_GATEWAY_ID }}
         run: |
-          headers=(-H "cf-aig-authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json")
+          # Tagged and kept out of the gateway log like the audit's own requests (opencode.json).
+          headers=(-H "cf-aig-authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json"
+            -H 'cf-aig-metadata: {"app":"security-audit"}' -H "cf-aig-collect-log: false")
           # Workers AI is Cloudflare's own upstream, so it also takes the token as its
           # Authorization header. Third-party providers never receive it.
           case "$MODEL" in workers-ai/* | @cf/*) headers+=(-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN") ;; esac
