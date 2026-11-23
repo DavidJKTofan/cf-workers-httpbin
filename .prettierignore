@@ -1,0 +1,8 @@
+# Generated
+worker-configuration.d.ts
+package-lock.json
+
+# Formatted by hand. test/docs.test.ts matches the README endpoint rows character for
+# character, and Prettier's HTML output wraps inline markup in hard-to-read ways.
+*.md
+*.html

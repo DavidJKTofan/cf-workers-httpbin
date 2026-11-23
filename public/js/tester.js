@@ -143,7 +143,11 @@ export function createTester() {
 			const headerCount = renderHeaders(responseHeaders, response.headers);
 			tabs.headers.textContent = `Headers (${headerCount})`;
 
-			const status = el('span', { class: 'status', 'data-class': String(response.status)[0] }, `${response.status} ${response.statusText}`.trim());
+			const status = el(
+				'span',
+				{ class: 'status', 'data-class': String(response.status)[0] },
+				`${response.status} ${response.statusText}`.trim(),
+			);
 			const details = [`${elapsed} ms`, formatBytes(buffer.byteLength)];
 			if (response.redirected) details.push(`redirected to ${new URL(response.url).pathname}`);
 			setMeta(status, ...details.map((detail) => el('span', {}, detail)));

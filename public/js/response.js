@@ -68,7 +68,9 @@ export function describeBody(buffer, contentType) {
  * @param {Headers} headers
  */
 export function renderHeaders(tbody, headers) {
-	const rows = [...headers].sort(([a], [b]) => a.localeCompare(b)).map(([name, value]) => el('tr', {}, el('th', { scope: 'row' }, name), el('td', {}, value)));
+	const rows = [...headers]
+		.sort(([a], [b]) => a.localeCompare(b))
+		.map(([name, value]) => el('tr', {}, el('th', { scope: 'row' }, name), el('td', {}, value)));
 	tbody.replaceChildren(...rows);
 	return rows.length;
 }

@@ -11,7 +11,12 @@ function listsEtag(header: string, etag: string): boolean {
 	if (header.trim() === '*') return true;
 	return header
 		.split(',')
-		.map((candidate) => candidate.trim().replace(/^W\//, '').replace(/^"(.*)"$/, '$1'))
+		.map((candidate) =>
+			candidate
+				.trim()
+				.replace(/^W\//, '')
+				.replace(/^"(.*)"$/, '$1'),
+		)
 		.includes(etag);
 }
 

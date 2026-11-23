@@ -1,0 +1,142 @@
+# Lint, type-check, test, bundle and smoke-test every push to main and every pull request.
+#
+# Everything runs on standard GitHub-hosted runners, which are free for public
+# repositories, and nothing needs a secret or a Cloudflare account: `wrangler deploy
+# --dry-run` and `wrangler check startup` work without credentials. Pull requests from
+# forks therefore get the same checks.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    # An explicit shell adds -o pipefail, so `cmd | tee file` fails when cmd fails.
+    shell: bash
+
+env:
+  WRANGLER_SEND_METRICS: 'false'
+
+jobs:
+  lint:
+    name: Lint and type-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: lts/*
+          cache: npm
+      # --ignore-scripts: no dependency runs an install script. esbuild and workerd
+      # find their platform binaries without one.
+      - run: npm ci --ignore-scripts
+      - name: Generated types are current
+        run: npx wrangler types --check
+      - name: oxlint (type-aware, includes no-floating-promises)
+        run: npx oxlint --format=github
+      - name: Prettier
+        run: npm run format:check
+      - name: TypeScript
+        run: npm run typecheck
+      - name: actionlint
+        uses: docker://rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 # 1.7.12
+        with:
+          args: -color
+
+  test:
+    name: Test (Node.js ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # The oldest release the toolchain supports (see README), and the LTS lines.
+        node: ['22.12.0', '24', '26']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci --ignore-scripts
+      # Vitest runs the suite inside workerd and reports failures as annotations.
+      - run: npm test
+
+  build:
+    name: Bundle and startup profile
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci --ignore-scripts
+      # Validates wrangler.jsonc, bundles the Worker and reads the assets directory
+      # exactly as a deploy would, then stops before uploading anything.
+      - name: wrangler deploy --dry-run
+        run: npx wrangler deploy --dry-run --outdir dist --metafile dist/bundle-meta.json
+      # Bundle size and a CPU profile of the Worker's startup phase. The timing comes
+      # from this runner, not from Cloudflare, so it is for comparison, not a limit.
+      - name: wrangler check startup
+        run: npx wrangler check startup --outfile dist/worker-startup.cpuprofile | tee "$RUNNER_TEMP/startup.txt"
+      - name: Summary
+        run: |
+          {
+            echo '### Worker bundle and startup'
+            echo
+            # Indented four spaces: a Markdown code block.
+            grep -E 'Bundle:|Profile window|Sampled time|Active:|Idle:|Samples:' "$RUNNER_TEMP/startup.txt" | sed -E 's/^[│ ]+/    /'
+            echo
+            echo 'For a flame graph, open worker-startup.cpuprofile from the worker-bundle artifact in Chrome DevTools or VS Code.'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: worker-bundle
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  smoke:
+    name: Smoke test (wrangler dev)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci --ignore-scripts
+      # Left running in the background; the runner stops it when the job ends.
+      - name: Start wrangler dev
+        run: npx wrangler dev --ip 127.0.0.1 --port 8787 --show-interactive-dev-session=false > "$RUNNER_TEMP/wrangler-dev.log" 2>&1 &
+      # Waits for the server, then sends every endpoint's example request from
+      # GET /endpoints and fails on any 5xx, timeout or missing security header.
+      - name: Smoke test every endpoint
+        run: npm run smoke
+        env:
+          HTTPBIN: http://127.0.0.1:8787
+      - name: wrangler dev log
+        if: always()
+        run: cat "$RUNNER_TEMP/wrangler-dev.log"

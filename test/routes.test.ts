@@ -164,7 +164,12 @@ describe('Cloudflare additions', () => {
 		const response = await call('/cdn-cgi/trace', { headers });
 		expect(response.headers.get('Content-Type')).toBe('text/plain; charset=utf-8');
 		expect(response.headers.get('X-Trace-Source')).toBe('worker-fallback');
-		const fields = Object.fromEntries((await response.text()).trim().split('\n').map((line) => line.split(/=(.*)/s).slice(0, 2)));
+		const fields = Object.fromEntries(
+			(await response.text())
+				.trim()
+				.split('\n')
+				.map((line) => line.split(/=(.*)/s).slice(0, 2)),
+		);
 		expect(fields).toMatchObject({ h: 'httpbin.test', ip: '203.0.113.7', visit_scheme: 'https', uag: 'vitest' });
 		expect(Number(fields.ts)).toBeGreaterThan(1_700_000_000);
 	});
@@ -187,7 +192,7 @@ describe('response formats', () => {
 		}
 	});
 
-	it('keeps crawlers out of /deny and Cloudflare\'s /cdn-cgi/ in robots.txt', async () => {
+	it("keeps crawlers out of /deny and Cloudflare's /cdn-cgi/ in robots.txt", async () => {
 		expect(await (await call('/robots.txt')).text()).toBe('User-agent: *\nDisallow: /deny\nDisallow: /cdn-cgi/\n');
 	});
 

@@ -166,3 +166,8 @@ dist
 !.env.example
 .wrangler/
 .DS_Store
+
+# CI and audit output
+.security-audit/
+*.cms
+worker-startup.cpuprofile

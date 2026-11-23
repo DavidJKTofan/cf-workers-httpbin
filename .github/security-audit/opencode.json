@@ -1,0 +1,61 @@
+{
+	"$schema": "https://opencode.ai/config.json",
+	"share": "disabled",
+	"autoupdate": false,
+	"enabled_providers": ["cloudflare-ai-gateway"],
+	"provider": {
+		"cloudflare-ai-gateway": {
+			"options": {
+				"metadata": { "app": "security-audit" },
+				"collectLog": false
+			},
+			"models": {
+				"workers-ai/@cf/openai/gpt-oss-120b": {
+					"name": "gpt-oss-120b (Workers AI)",
+					"limit": { "context": 128000, "output": 16384 }
+				}
+			}
+		}
+	},
+	"agent": {
+		"build": { "steps": 300 },
+		"general": { "steps": 100 },
+		"explore": { "steps": 100 }
+	},
+	"permission": {
+		"*": "deny",
+		"read": {
+			"*": "allow",
+			"*.env": "deny",
+			"*.env.*": "deny"
+		},
+		"glob": "allow",
+		"grep": "allow",
+		"list": "allow",
+		"todowrite": "allow",
+		"skill": {
+			"*": "deny",
+			"security-audit": "allow"
+		},
+		"task": {
+			"*": "deny",
+			"general": "allow",
+			"explore": "allow"
+		},
+		"edit": {
+			"*": "deny",
+			".security-audit/*": "allow"
+		},
+		"bash": {
+			"*": "deny",
+			"node .agents/skills/security-audit/validate-findings.cjs *": "allow",
+			"node .agents/skills/security-audit/validate-coverage-ledger.cjs *": "allow"
+		},
+		"external_directory": "deny",
+		"webfetch": "deny",
+		"websearch": "deny",
+		"lsp": "deny",
+		"question": "deny",
+		"doom_loop": "deny"
+	}
+}

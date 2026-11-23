@@ -1,0 +1,12 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"options": {
+		"typeAware": true,
+		"denyWarnings": true
+	},
+	"rules": {
+		"typescript/no-floating-promises": "error",
+		"typescript/no-misused-promises": "error"
+	},
+	"ignorePatterns": ["worker-configuration.d.ts"]
+}
