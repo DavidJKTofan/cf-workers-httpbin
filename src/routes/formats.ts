@@ -78,9 +78,7 @@ function compressed(encoding: Encoding, flag: string): Handler {
 		);
 
 		const body =
-			encoding === 'br'
-				? brotliCompressSync(payload)
-				: new Blob([payload]).stream().pipeThrough(new CompressionStream(encoding));
+			encoding === 'br' ? brotliCompressSync(payload) : new Blob([payload]).stream().pipeThrough(new CompressionStream(encoding));
 
 		return new Response(body, {
 			encodeBody: 'manual',

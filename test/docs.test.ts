@@ -5,7 +5,7 @@ import { LIMITS } from '../src/lib/limits';
 import { catalogue } from '../src/routes';
 
 /** Paths in the README's endpoint tables: rows shaped like "| GET | `/path` | … |". */
-const documented = [...readme.matchAll(/^\| [A-Z, ]+ \| `(\/[^`]*)` \|/gm)].map((match) => match[1]);
+const documented = [...readme.matchAll(/^\| [A-Z, ]+ \| `(\/[^`]*)` \|/gm)].flatMap((match) => match[1] ?? []);
 
 describe('README', () => {
 	it('documents every endpoint exactly as the Worker describes it', () => {

@@ -15,17 +15,17 @@
 		// path falls through to src/index.ts.
 		"directory": "./public",
 		// Lets the Worker read assets itself (used by the /image endpoints).
-		"binding": "ASSETS"
+		"binding": "ASSETS",
 	},
 	"observability": {
 		"enabled": true,
 		"logs": {
-			"head_sampling_rate": 1
+			"head_sampling_rate": 1,
 		},
 		"traces": {
 			"enabled": true,
-			"head_sampling_rate": 0.1
-		}
+			"head_sampling_rate": 0.1,
+		},
 	},
 	// The Worker is reachable only through custom domains: its workers.dev URL and
 	// Preview URLs are off. Add a custom domain on a zone in the same account, in the
@@ -33,5 +33,5 @@
 	//
 	// "routes": [{ "pattern": "httpbin.example.com", "custom_domain": true }],
 	"workers_dev": false,
-	"preview_urls": false
+	"preview_urls": false,
 }

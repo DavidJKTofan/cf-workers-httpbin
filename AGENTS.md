@@ -8,14 +8,17 @@ An httpbin-style HTTP testing service on Cloudflare Workers. A TypeScript Worker
 
 ## Commands
 
-| Command              | Use it                                                                 |
-| -------------------- | ---------------------------------------------------------------------- |
-| `npm run dev`        | Local server on <http://localhost:8787>                                |
-| `npm run check`      | Before every commit: generated types current, type-check, all tests    |
-| `npm test`           | Tests only (Vitest inside the Workers runtime)                         |
-| `npm run typecheck`  | Type-check `src/` and `test/`                                          |
-| `npm run cf-typegen` | After any change to bindings or flags in `wrangler.jsonc`              |
-| `npm run deploy`     | `wrangler deploy`. Only when asked to deploy                           |
+| Command              | Use it                                                                    |
+| -------------------- | ------------------------------------------------------------------------- |
+| `npm run dev`        | Local server on <http://localhost:8787>                                   |
+| `npm run check`      | Before every commit: generated types, lint, formatting, type-check, tests |
+| `npm test`           | Tests only (Vitest inside the Workers runtime)                            |
+| `npm run lint`       | oxlint, type-aware. Fails on warnings                                     |
+| `npm run format`     | Prettier. `format:check` reports without writing                          |
+| `npm run smoke`      | Every endpoint example against a running server; `HTTPBIN` picks it       |
+| `npm run typecheck`  | Type-check `src/` and `test/`                                             |
+| `npm run cf-typegen` | After any change to bindings or flags in `wrangler.jsonc`                 |
+| `npm run deploy`     | `wrangler deploy`. Only when asked to deploy                              |
 
 Requires Node.js 22.12 or later.
 
@@ -32,7 +35,7 @@ Requires Node.js 22.12 or later.
 Follow <https://developers.cloudflare.com/workers/best-practices/workers-best-practices/>. The points that matter most here:
 
 - **No request state at module scope.** Isolates are reused across requests. Module scope holds only immutable data (the compiled router, constants). Pass everything else through `RouteContext`.
-- **No floating promises.** `await` it, `return` it, or pass it to `ctx.waitUntil()`. Streaming responses use the pull-based `timedStream` helper instead of a detached writer loop.
+- **No floating promises.** `await` it, `return` it, or pass it to `ctx.waitUntil()`. Streaming responses use the pull-based `timedStream` helper instead of a detached writer loop. `npm run lint` fails on a floating or misused promise.
 - **Do not buffer what you can stream, and bound what you must buffer.** Request bodies are read through `readBody()`, which enforces `LIMITS.bodyBytes`.
 - **Bindings, not REST calls.** Assets are read through `env.ASSETS`.
 - **`Env` is generated.** Never hand-write it. Run `npm run cf-typegen` and commit `worker-configuration.d.ts`.
@@ -65,8 +68,9 @@ Tests run in `workerd` through `@cloudflare/vitest-plugin`, with the real `wrang
 - Use `call()` from `test/helpers.ts` by default. It goes through `exports.default.fetch`, the entry point Cloudflare invokes, and does not follow redirects.
 - Use `direct()` only when the fetch path would hide what you are testing. It returns the Response exactly as the handler built it, which is how the compression tests prove the bytes are really encoded.
 - Storage is isolated per test file and files run concurrently. This Worker is stateless, so tests need no setup or ordering; keep it that way.
-- The plugin injects `nodejs_compat` whether or not the config has it. The config does, and must keep it: `node:buffer`, `node:crypto` and `node:zlib` are used at runtime.
+- The plugin injects `nodejs_compat` whether or not the config has it, so no test notices the flag going missing. `node:buffer`, `node:crypto` and `node:zlib` are used at runtime. With a `compatibility_date` of 2026-08-04 or later, as here, Workers turn Node.js compatibility on by default and the flag is redundant. The config keeps it anyway, as Cloudflare's best practices recommend.
 - Assert on behaviour a client can observe (status, headers, body), with realistic inputs: malformed headers, oversized bodies, repeated keys, percent-encoding.
+- `npm run smoke` (`scripts/smoke.mjs`) is not part of the suite. It sends every endpoint's catalogue example to a running server over HTTP. It reads the route table from `GET /endpoints`, so never list endpoints in it.
 
 ## Web UI
 
@@ -76,6 +80,21 @@ Tests run in `workerd` through `@cloudflare/vitest-plugin`, with the real `wrang
 - Text from the network is inserted with `textContent` through `el()` in `public/js/dom.js`. Never use `innerHTML` with response data.
 - The request builder only talks to its own origin, and a shared link (`/#GET:/path`) only fills in the form. Keep both properties: nothing may be sent just because a page was opened.
 - External links open in a new tab with `rel="noopener noreferrer"`.
+
+## Continuous integration
+
+Workflows live in `.github/workflows/`. `README.md` describes what each one checks.
+
+- **`npm run check` and CI run the same checks.** Add a check to both or to neither. CI adds only what needs a runner: the Node.js version matrix, the dry-run bundle and startup profile, the smoke test against `wrangler dev`, and the security scans.
+- **CI needs no secrets and no Cloudflare account.** Use commands that work without credentials, such as `wrangler deploy --dry-run` and `wrangler check startup`, so pull requests from forks are checked in full. Only the security audit uses secrets, and it reads them from the `security-audit` environment.
+- **Pin every action to a full commit SHA**, with its version in a comment: `uses: owner/action@<sha> # v1.2.3`. Dependabot updates both.
+- **Least privilege.** Workflows default to `contents: read`, and a job asks for more only for what it does, such as `security-events: write` to upload results. Check out with `persist-credentials: false`, and install with `npm ci --ignore-scripts`.
+- **No new tools without need.** Use what the runner image already provides (OpenSSL, tar, curl, jq) or what `npm ci` installs. Every added tool is another supply-chain dependency. When a job needs one, take it from the runner's Ubuntu archive (as the audit does with ripgrep) or pin it by checksum and verify before use (as the audit does with OpenCode). Never install with lifecycle scripts enabled.
+- **Never put untrusted input in a `run:` script** (pull request titles, branch names, comment bodies). Pass it through `env:` instead. zizmor flags it.
+- **Models go through Cloudflare AI Gateway only.** No provider API key is stored in GitHub: the audit holds a Cloudflare API token, and third-party models are paid with Unified Billing. Name models as AI Gateway does (`workers-ai/@cf/...`, `anthropic/...`, `openai/...`).
+- **The security audit runs only on trusted code.** Never trigger it, or any job that gives an agent a token, on `pull_request`: code in a pull request from a fork could instruct the agent. Keep it manual or scheduled, on `main`. Its permissions live in `.github/security-audit/opencode.json`, deny by default: widen them only for something the skill cannot work without. Keep its limits: the gateway's spend limit, the agent `steps`, and the timeouts. Start it with `gh workflow run security-audit.yml --ref main`. `README.md` lists its inputs and schedule.
+- **Audit findings stay private.** Never post them to issues, pull request comments or logs, and keep the agent's output and event log out of the workflow log. They leave the run only as the short-lived `security-audit` artifact, encrypted with OpenSSL CMS to `SECURITY_AUDIT_RECIPIENT_CERT`. Never upload the plain report. Confirmed findings become draft private security advisories.
+- **GitHub Actions never deploy.** A deployment connected to Workers Builds, as the Deploy button sets up, deploys every push to `main`, so merging a pull request is the deploy: merge only when its checks pass. Otherwise deploy with `npm run deploy`, and only when asked.
 
 ## Commits, pull requests and privacy
 

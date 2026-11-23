@@ -261,14 +261,17 @@ Every request passes through Cloudflare before it reaches the Worker. That chang
 
 ## Scripts
 
-| Command              | What it does                                                   |
-| -------------------- | -------------------------------------------------------------- |
-| `npm run dev`        | Run the Worker and static assets locally with Wrangler         |
-| `npm test`           | Run the test suite inside the Workers runtime                  |
-| `npm run typecheck`  | Type-check the Worker and the tests                            |
-| `npm run cf-typegen` | Regenerate `worker-configuration.d.ts` after changing bindings |
-| `npm run check`      | Verify generated types, type-check and test in one go          |
-| `npm run deploy`     | Deploy with Wrangler                                           |
+| Command              | What it does                                                      |
+| -------------------- | ----------------------------------------------------------------- |
+| `npm run dev`        | Run the Worker and static assets locally with Wrangler            |
+| `npm test`           | Run the test suite inside the Workers runtime                     |
+| `npm run smoke`      | Send every endpoint example to a running server over HTTP         |
+| `npm run lint`       | Lint with oxlint, type-aware, so unawaited promises fail          |
+| `npm run format`     | Format with Prettier (`format:check` only reports)                |
+| `npm run typecheck`  | Type-check the Worker and the tests                               |
+| `npm run cf-typegen` | Regenerate `worker-configuration.d.ts` after changing bindings    |
+| `npm run check`      | Generated types, lint, formatting, type-check and tests in one go |
+| `npm run deploy`     | Deploy with Wrangler                                              |
 
 ## Deploy
 
@@ -279,6 +282,8 @@ npx wrangler login
 npm run deploy
 ```
 
+The button also connects your copy of the repository to [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/), which then deploys every push to `main` with `npx wrangler deploy`. In that setup, merging a pull request is the deploy, so merge only when its checks pass. GitHub Actions never deploy: they only check.
+
 `wrangler.jsonc` turns the `workers.dev` URL and Preview URLs off, so a fresh deployment has no public URL until you give it one. Add a custom domain on a zone in the same account, either in the dashboard or in `wrangler.jsonc`:
 
 ```jsonc
@@ -286,6 +291,144 @@ npm run deploy
 ```
 
 To use the `workers.dev` URL instead, set `"workers_dev": true`. Without routes in the file, Wrangler leaves domains you added in the dashboard alone.
+
+## Continuous integration
+
+GitHub Actions workflows in [`.github/workflows/`](.github/workflows) check every push to `main` and every pull request. They run on standard GitHub-hosted runners, which are free for public repositories, and need no secrets or Cloudflare account, so pull requests from forks get the same checks. None of them deploys.
+
+| Workflow | When | What it checks |
+| --- | --- | --- |
+| [CI](.github/workflows/ci.yml) | Push to `main`, pull requests | Generated types, oxlint, Prettier, TypeScript and actionlint. The test suite on Node.js 22.12, 24 and 26. A `wrangler deploy --dry-run` bundle and a `wrangler check startup` profile, uploaded as the `worker-bundle` artifact. `npm run smoke` against `wrangler dev` |
+| [Security](.github/workflows/security.yml) | Push to `main`, pull requests, weekly | CodeQL for the code and the workflows, zizmor for workflow security, dependency review on pull requests, npm registry signatures and runtime dependency advisories |
+| [Security audit](.github/workflows/security-audit.yml) | By hand, weekly, `main` only | A full audit with Cloudflare's [security-audit skill](https://github.com/cloudflare/security-audit-skill), run by OpenCode through Cloudflare AI Gateway, with Workers AI's gpt-oss-120b by default. The report is encrypted with OpenSSL so only you can read it. Skipped until you add a Cloudflare API token, and fails if the rest of its configuration is missing, see below |
+
+[Dependabot](.github/dependabot.yml) proposes npm and GitHub Actions updates once a week, grouped, and only for releases at least a week old. Every action is pinned to a full commit SHA, which Dependabot keeps current.
+
+`npm run check` runs the same lint, format, type and test checks locally.
+
+### Security audit
+
+The audit runs Cloudflare's security-audit skill with the [OpenCode](https://opencode.ai) agent, and every model call goes through [Cloudflare AI Gateway](https://developers.cloudflare.com/ai-gateway/). GitHub holds a Cloudflare API token, never a provider key. The default model is Workers AI's [`@cf/openai/gpt-oss-120b`](https://developers.cloudflare.com/workers-ai/models/gpt-oss-120b/). Anthropic and OpenAI models work through the same gateway, paid with [Unified Billing](https://developers.cloudflare.com/ai-gateway/features/unified-billing/) credits. The agent is OpenCode rather than Claude Code because Claude Code speaks only the Anthropic Messages API, which AI Gateway does not offer for Workers AI models.
+
+This is the one workflow that costs money. GitHub runs it for free, but its model calls are billed to your Cloudflare account, and a full audit is long and makes many of them.
+
+#### When it runs
+
+- **By hand**, from `main`. See [Run it](#run-it).
+- **Weekly**, every Monday at 03:17 UTC, on `main`, with the `standard` profile, gpt-oss-120b and `high` reasoning effort. GitHub turns off scheduled workflows in a public repository after 60 days without activity; turn it back on under **Actions**. To stop the weekly run, remove the `schedule` trigger from the workflow, or turn the workflow off:
+
+  ```bash
+  gh workflow disable security-audit.yml
+  ```
+
+- **Never** on pushes or pull requests. Started on any branch other than `main`, the job is skipped.
+
+Each run checks its configuration first. Without `CLOUDFLARE_API_TOKEN`, the job is skipped. With the token but another setting missing, an unusable certificate, or a gateway that rejects a first small request, it fails in its first steps, before the audit starts.
+
+#### Run it
+
+Under **Actions > Security audit > Run workflow**, keep the branch on `main` and choose:
+
+| Input | Default | What it sets |
+| --- | --- | --- |
+| `profile` | `standard` | How thoroughly the skill covers the code: `quick`, `standard` or `deep` |
+| `model` | `workers-ai/@cf/openai/gpt-oss-120b` | The model, named as AI Gateway names it |
+| `reasoning` | `high` | Reasoning effort: `low`, `medium` or `high` |
+| `agent_budget` | empty | The most agent runs the skill may plan for. Empty lets it choose |
+
+Or start it from a terminal, then follow the run:
+
+```bash
+gh workflow run security-audit.yml --ref main -f profile=quick
+```
+
+```bash
+gh run watch "$(gh run list --workflow security-audit.yml --limit 1 --json databaseId --jq '.[0].databaseId')"
+```
+
+A run takes up to two hours. Its log shows only the configuration checks, the certificate fingerprint and OpenCode's exit status. The findings are in the encrypted artifact: see [Read the report](#read-the-report).
+
+Models are named as AI Gateway names them: `workers-ai/@cf/openai/gpt-oss-120b`, `anthropic/claude-opus-5-5` or `openai/gpt-5.5`. If OpenCode's built-in catalogue does not know a model, add it with its context and output limits under `provider.cloudflare-ai-gateway.models` in [`.github/security-audit/opencode.json`](.github/security-audit/opencode.json), as gpt-oss-120b is. gpt-oss-120b is much smaller than frontier models and has a 128,000-token context window, so expect a shallower audit, and try the `quick` profile first.
+
+#### Set it up
+
+1. In the dashboard under **AI > AI Gateway**, create a gateway for the audit, for example `security-audit`. Keep authentication on, and add a [spend limit](https://developers.cloudflare.com/ai-gateway/features/spend-limits/), for example 10 US dollars a week. To use Anthropic or OpenAI models, also load AI Gateway credits.
+
+   Two other gateway settings affect the audit. A [DLP](https://developers.cloudflare.com/ai-gateway/features/dlp/) policy set to **Block** can stop the audit partway, with error `2029` or `2030`, because audit prompts quote the code and discuss credentials, cookies and IP addresses: set such policies to **Flag** on this gateway. And [logging](https://developers.cloudflare.com/ai-gateway/observability/logging/) stores prompts and responses, findings included, in your Cloudflare account: turn it off if findings should exist only in the encrypted report.
+
+2. [Create a Cloudflare API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) with **Account > Workers AI > Read** and **Account > AI Gateway > Run**, and give it an expiry date. AI Gateway permissions cannot be limited to one gateway, so the token works with every gateway in the account.
+3. Under **Settings > Environments**, create an environment named `security-audit` and limit its deployment branches to `main`. Store the token, your account ID and the gateway name in it. The first two commands ask for the value. The account ID is a secret only so that GitHub masks it in the log.
+
+   ```bash
+   gh secret set CLOUDFLARE_API_TOKEN --env security-audit
+   ```
+
+   ```bash
+   gh secret set CLOUDFLARE_ACCOUNT_ID --env security-audit
+   ```
+
+   ```bash
+   gh variable set SECURITY_AUDIT_GATEWAY_ID --env security-audit --body security-audit
+   ```
+
+4. Create an RSA key pair and a self-signed certificate with OpenSSL, and store the certificate, the public half, in the environment as the `SECURITY_AUDIT_RECIPIENT_CERT` secret. The workflow encrypts every report to it. The first command asks for a passphrase that protects the private key, and the second asks for it again.
+
+   ```bash
+   mkdir -p -m 700 ~/.config/security-audit
+   ```
+
+   ```bash
+   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -aes-256-cbc -out ~/.config/security-audit/key.pem
+   ```
+
+   ```bash
+   openssl req -x509 -new -key ~/.config/security-audit/key.pem -sha256 -days 3650 -subj "/CN=security-audit" -out ~/.config/security-audit/cert.pem
+   ```
+
+   ```bash
+   gh secret set SECURITY_AUDIT_RECIPIENT_CERT --env security-audit < ~/.config/security-audit/cert.pem
+   ```
+
+   Keep `key.pem` and its passphrase safe: without them no report can be read. These commands need OpenSSL 3.0 or later (`openssl version`). The LibreSSL that macOS installs as `/usr/bin/openssl` cannot decrypt these reports.
+
+   Each run prints the SHA-256 fingerprint of the certificate it encrypted to. To check that it is yours, compare it with:
+
+   ```bash
+   openssl x509 -in ~/.config/security-audit/cert.pem -noout -fingerprint -sha256
+   ```
+
+#### Read the report
+
+Download the latest run's artifact and decrypt it into `.security-audit/`, which git ignores:
+
+```bash
+gh run download "$(gh run list --workflow security-audit.yml --limit 1 --json databaseId --jq '.[0].databaseId')" --name security-audit
+```
+
+```bash
+mkdir -p .security-audit
+```
+
+```bash
+openssl cms -decrypt -binary -inform DER -in security-audit.tar.gz.cms -recip ~/.config/security-audit/cert.pem -inkey ~/.config/security-audit/key.pem | tar -xzf - -C .security-audit
+```
+
+Start with `.security-audit/report/REPORT.md`. The agent's event log is in `.security-audit/log/`. File confirmed findings as [draft private security advisories](https://docs.github.com/en/code-security/security-advisories/working-with-repository-security-advisories/creating-a-repository-security-advisory), never as issues or pull request comments.
+
+#### How it is protected
+
+- **Trusted code only.** The agent reads the code it audits, and text in that code could try to instruct it. So the workflow never runs on pull requests, and runs only on `main`. [`.github/security-audit/opencode.json`](.github/security-audit/opencode.json) denies everything by default, then lets the agent read the checkout, write only to `.security-audit/` and run only the skill's two validators. Sub-agents get the same rules, and web, LSP and question tools stay off. No other configuration can add to it. As the skill requires without a sandbox, the agent installs no dependencies and runs none of the project's code.
+- **Few new dependencies.** The workflow downloads OpenCode 1.19.4, the version that Cloudflare's Sandbox guide pins, from the npm registry and checks it against a pinned SHA-512 before use. ripgrep comes from Ubuntu's signed archive, so OpenCode does not download it from GitHub. OpenCode's update check, model catalogue fetch, background plugin install and LSP downloads are off. The skill is pinned to a commit. Dependabot does not track the OpenCode and skill pins, so update them by hand.
+- **Findings stay private.** The agent's output and event log never reach the workflow log, and the agent cannot post anything. Before upload, the runner's own OpenSSL encrypts the report and the event log as CMS with AES-256-GCM and RSA-OAEP, and the plain report never leaves the runner. Anyone can download the `security-audit` artifact of a public repository during its 7 days, but only your private key opens it. Without `SECURITY_AUDIT_RECIPIENT_CERT`, the run fails before the audit starts.
+- **Spending has four limits.** Cloudflare enforces the gateway's spend limit whatever the runner does: once it is reached, the gateway answers `429`. It is eventually consistent, so a run can pass it slightly. Agent steps in `opencode.json` stop the main agent after 300 and each sub-agent after 100. The optional agent budget makes the skill plan within that many agent runs and still finish with a report. The audit step stops after 110 minutes and the job after 120, and whatever report exists by then is still uploaded.
+
+### Repository settings
+
+- Under **Settings > Advanced Security**, leave CodeQL **default setup** off. The Security workflow is an advanced setup, and GitHub rejects its results while default setup is on.
+- On the same page, turn on **Dependabot alerts** and **Dependabot security updates**. Alerts list known vulnerabilities in the dependencies. Security updates open pull requests that fix them, without waiting for the weekly schedule.
+- Also turn on **Private vulnerability reporting**, so that anyone can report a vulnerability privately. Reports arrive as draft security advisories, where confirmed audit findings go too.
+- Under **Settings > Actions > General**, keep the workflow permissions at **Read repository contents and packages permissions**, and keep GitHub Actions from creating or approving pull requests. Each workflow asks for anything more itself.
+- After CI and Security have run once, add a branch ruleset for `main` that requires a pull request and their checks. Where Workers Builds deploys `main`, a failing check then also blocks a deploy.
 
 ## Project structure
 
@@ -305,6 +448,8 @@ public/
   images/           Sample images served by /image/*
   _headers          Security headers for static assets
 test/               Vitest tests that run in the Workers runtime
+scripts/smoke.mjs   Smoke test against a running server
+.github/            CI and security workflows, Dependabot and security audit configuration
 AGENTS.md           Conventions for contributors and coding agents
 ```
 
@@ -332,6 +477,8 @@ Tests run with [Vitest inside the Workers runtime](https://developers.cloudflare
 - `test/assets.test.ts` checks the web UI through the static assets binding: security headers, broken references, external links.
 - `test/ui.test.ts` covers the UI's pure helpers, such as the shell quoting in the curl generator.
 - `test/docs.test.ts` keeps this README in step with the route table.
+
+`npm run smoke` is separate from the suite. With `npm run dev` running, it reads `GET /endpoints`, sends every endpoint's example request over real HTTP and fails on any 5xx, timeout or missing security header. Point `HTTPBIN` at a deployment to check that instead, for example `HTTPBIN=https://httpbin.example.com npm run smoke`.
 
 ### Debugging
 

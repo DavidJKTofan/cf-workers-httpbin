@@ -20,7 +20,10 @@ async function serve({ env, url }: RouteContext, format: Format): Promise<Respon
 	});
 }
 
-const image = (format: Format): Handler => (c) => serve(c, format);
+const image =
+	(format: Format): Handler =>
+	(c) =>
+		serve(c, format);
 
 /** Pick a format from the Accept header, preferring the most compact one the client lists. */
 const negotiate: Handler = async (c) => {

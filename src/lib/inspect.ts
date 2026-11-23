@@ -31,9 +31,7 @@ export function clientIp(request: Request): string {
 /** The request headers to echo: everything, or only what the client sent with `?show_env=0`. */
 export function requestHeaders({ request, url }: Pick<RouteContext, 'request' | 'url'>): Record<string, string> {
 	const hideCloudflare = !showEnv(url);
-	return Object.fromEntries(
-		[...request.headers].filter(([name]) => !isNeverEchoed(name) && !(hideCloudflare && isCloudflareHeader(name))),
-	);
+	return Object.fromEntries([...request.headers].filter(([name]) => !isNeverEchoed(name) && !(hideCloudflare && isCloudflareHeader(name))));
 }
 
 /**
